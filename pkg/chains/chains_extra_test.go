@@ -26,6 +26,7 @@ chain-settings:
           grpcId: 60001
           settings:
             expected-block-time: 1s
+            no-finality: true
 `
 
 const conflictExtraYaml = `
@@ -115,9 +116,21 @@ func TestLoadExtraChains_RegistersNewChain(t *testing.T) {
 	assert.Equal(t, "eth", c.MethodSpec, "method-spec should resolve to eth via protocol type")
 	assert.True(t, c.Chain >= dynamicChainBaseId, "extra chain should be allocated a dynamic Chain id")
 	assert.Equal(t, "besu-private-test", c.Chain.String(), "Chain.String() should round-trip the short-name")
+	assert.True(t, c.Settings.NoFinality, "no-finality setting should parse from extra-chains YAML")
+	assert.True(t, IsNoFinalityChain(c.Chain), "IsNoFinalityChain should mirror Settings.NoFinality")
 
 	byGrpc := GetChainByGrpcId(60001)
 	assert.Equal(t, c, byGrpc)
+}
+
+func TestIsNoFinalityChain_DefaultsFalseForKnownChain(t *testing.T) {
+	ethereum := GetChain("ethereum")
+	require.NotEqual(t, UnknownChain, ethereum)
+	assert.False(t, IsNoFinalityChain(ethereum.Chain), "no-finality must default to false for embedded chains")
+}
+
+func TestIsNoFinalityChain_UnknownChainReturnsFalse(t *testing.T) {
+	assert.False(t, IsNoFinalityChain(UnknownChain.Chain), "unknown chain must not be treated as no-finality")
 }
 
 func TestLoadExtraChains_SecondCallIsRejected(t *testing.T) {
